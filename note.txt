@@ -1,0 +1,40 @@
+﻿本项目为模仿圣达信谭宝财接口工程的demo工程，目的是梳理部署流程。
+1. 创建空maven工程parent
+2. 修改pom 添加<packaging>pom</packaging>等
+3. 删除不必要的启动加载项（父项目不需要执行，所以必须要初始加载项）以及一些不必要的文件，例如：src
+4. 创建子工程core、content, File -> New ->Module ->Maven不用选择什么直接下一步,创建启动子工程official选择spring inicialzr
+5. 子工程添加 <relativePath>../pom.xml</relativePath>，父工程添加<module>core</module>,注意父子依赖的版本号对应
+    （relativePath：查找顺序：relativePath元素中的地址–本地仓库–远程仓库
+    <relativePath/>设定一个空值将始终从仓库中获取，不从本地路径获取）
+    依赖在本模块引入或在依赖模块或在父模块都可以，即只要引入到本项目中的External Libraries就行，这里只在core添加了
+     <relativePath>../pom.xml</relativePath>
+6. 给被依赖模块core，content添加<packaging>jar</packaging>，启动类official不需要（没卵用就是默认jar）
+   项目的打包类型：pom、jar、war
+   packing默认是jar类型，
+   <packaging>pom</packaging>   --------->   父类型都为pom类型
+   <packaging>jar</packaging>      --------->   内部调用或者是作服务使用
+   <packaging>war</packaging>    --------->   需要部署的项目
+
+7. 由于official是通过spring inicialzr，official的pom由父类类型改为子类类型，即模仿其他子类重构pom，引入core、content依赖
+   入口模块用org.springframework.boot打包，子模块用org.apache.maven.plugins打包区别是：
+   三个模块通过maven打包以后可以发现，official.jar下面是BOOT-INF，META-INF，org，core等是com，META-INF
+
+8. 编码测试接口，这里content依赖core，official依赖core和content
+9. 添加maven打包插件，此时如果official打包插件plugins同子包core等，会把所有依赖打入BOOT-INF/lib下面，当然可以通过java -jar启动，但为了
+   解耦依赖lib，需要做以下工作
+10.切换到official pom所在的cmd位置，执行命令G:\maven\apache-maven-3.6.0\bin\mvn dependency:copy-dependencies -DoutputDirectory=(G:\)lib  -DincludeScope=runtime
+    （配置了maven环境变量的话可以省略mvn之前的）也可以走上一步普通打包后把lib单独拷出来
+11. 使用-Dloader.path指定lib目录启动official，即java -Dloader.path="lib/" -jar official.jar
+    但是需要添加<layout>ZIP</layout>，不指定的话-Dloader.path不生效，
+    同时需要添加<mainClass>指定入口类(似乎可以省略，默认本类启动类，本地已驗證)
+    <includes>里面的包表示打到official.jar/BOOT-INF/lib里面，其余依赖不打入，没有该节点的话所有依赖会都进lib
+    (入口类写不写也无所谓，可以省略该节点，只是依赖都会进lib文件夹，要删除lib)
+12.windows本机测试可运行
+13. 部署至linux环境
+      安装jdk
+      本次采用docker安装MySQL，端口由linux主机的3307映射至3306，并把配置文件的mysql地址改为linux地址（或localhost）+3307
+      为方便配置文件，可以把放在core中的配置文件拿到外面，把配置文件、officail.jar、lib放到opt/official/下
+      编写控制脚本并启动
+      访问业务连接http://192.168.1.4:8080/content/getRedis，部署成功！
+
+
